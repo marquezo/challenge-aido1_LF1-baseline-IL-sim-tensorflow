@@ -5,7 +5,7 @@ from _layers import one_residual
 
 
 class TensorflowModel:
-    def __init__(self, observation_shape, action_shape, graph_location, seed=1234):
+    def __init__(self, observation_shape, action_shape, graph_location, lr=1e-4, seed=1234):
         # model definition
         self._observation = None
         self._action = None
@@ -19,6 +19,7 @@ class TensorflowModel:
         self.tf_saver = None
 
         self.seed = seed
+        self.lr = lr
 
         self._initialize(observation_shape, action_shape, graph_location)
 
@@ -39,8 +40,6 @@ class TensorflowModel:
         self.tf_saver.save(self.tf_session, self.tf_checkpoint)
 
     def computation_graph(self):
-        #model = one_residual(self._preprocessed_state, seed=self.seed)
-
         output = tf.layers.conv2d(self._preprocessed_state, filters=64, kernel_size=3, strides=1, padding='same',
                               kernel_initializer=tf.keras.initializers.he_normal(seed=self.seed),
                               kernel_regularizer=tf.keras.regularizers.l2(1e-04))
@@ -99,7 +98,7 @@ class TensorflowModel:
         return output
 
     def _optimizer(self):
-        return tf.train.AdamOptimizer(learning_rate=0.0001)
+        return tf.train.AdamOptimizer(learning_rate=self.lr)
 
     def _loss_function(self):
         return tf.losses.mean_squared_error(self._action, self._computation_graph)
