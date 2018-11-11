@@ -1,12 +1,51 @@
 import numpy as np
 from tqdm import tqdm
+from gym_duckietown.envs import DuckietownEnv
 
 from _loggers import Reader
 from model import TensorflowModel
 
+
+env = DuckietownEnv(
+    map_name='loop_empty',
+    max_steps=500001,
+    domain_rand=False,
+    camera_width=80,
+    camera_height=60,
+    accept_start_angle_deg=4,  # start close to straight
+    full_transparency=True,
+)
+
+
+def evaluate(env, episodes=5, steps=500):
+
+    observation = env.reset()
+
+    # we can use the gym reward to get an idea of the performance of our model
+    cumulative_reward = 0.0
+
+    for episode in range(0, episodes):
+        for steps in range(0, steps):
+            action = model.predict(observation)
+            #action = np.abs(action)
+            observation, reward, done, info = env.step(action)
+            env.render()
+            cumulative_reward += reward
+
+            if done:
+                break
+            # env.render()
+        # we reset after each episode, or not, this really depends on you
+        env.reset()
+
+    print('total reward: {}, mean reward: {}'.format(cumulative_reward, cumulative_reward // episodes))
+
+    return cumulative_reward // episodes
+
+
 # configuration zone
-BATCH_SIZE = 32
-EPOCHS = 10
+BATCH_SIZE = 64
+EPOCHS = 20
 # here we assume the observations have been resized to 60x80
 OBSERVATIONS_SHAPE = (None, 60, 80, 3)
 ACTIONS_SHAPE = (None, 2)
@@ -27,6 +66,7 @@ model = TensorflowModel(
 )
 
 # we trained for EPOCHS epochs
+# TODO: need a validation set: use the reward to stop training
 epochs_bar = tqdm(range(EPOCHS))
 for i in epochs_bar:
     # we defined the batch size, this can be adjusted according to your computing resources...
@@ -37,7 +77,8 @@ for i in epochs_bar:
             actions=actions[batch:batch + BATCH_SIZE]
         )
 
-    epochs_bar.set_postfix({'loss': loss})
+    valid_reward = evaluate(env)
+    epochs_bar.set_postfix({'loss': loss, 'valid_reward': valid_reward})
 
     # every 10 epochs, we store the model we have
     # but I'm sure that you're smarter than that, what if this model is worse than the one we had before
@@ -46,6 +87,7 @@ for i in epochs_bar:
         epochs_bar.set_description('Model saved...')
     else:
         epochs_bar.set_description('')
+
 
 # the loss at this point should be on the order of 2e-2, which is far for great, right?
 

@@ -1,5 +1,6 @@
 from model import TensorflowModel
 from gym_duckietown.envs import DuckietownEnv
+import numpy as np
 
 # configuration zone
 # yes, remember the simulator give us an outrageously large image
@@ -9,12 +10,16 @@ ACTIONS_SHAPE = (None, 2)
 SEED = 1234
 STORAGE_LOCATION = "trained_models/behavioral_cloning"
 EPISODES = 10
-STEPS = 65
+STEPS = 500
 
 env = DuckietownEnv(
-    map_name='udem1',  # check the Duckietown Gym documentation, there are many maps of different complexity
+    map_name='loop_empty',
     max_steps=EPISODES * STEPS,
-    domain_rand=False
+    domain_rand=False,
+    camera_width=640,
+    camera_height=480,
+    accept_start_angle_deg=4,  # start close to straight
+    full_transparency=True,
 )
 
 model = TensorflowModel(
@@ -32,10 +37,13 @@ cumulative_reward = 0.0
 for episode in range(0, EPISODES):
     for steps in range(0, STEPS):
         action = model.predict(observation)
+        #print('Action', action)
+        #action = np.abs(action)
         observation, reward, done, info = env.step(action)
+        env.render()
         cumulative_reward += reward
         if done:
-            env.reset()
+            break
         # env.render()
     # we reset after each episode, or not, this really depends on you
     env.reset()

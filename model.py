@@ -39,20 +39,67 @@ class TensorflowModel:
         self.tf_saver.save(self.tf_session, self.tf_checkpoint)
 
     def computation_graph(self):
-        model = one_residual(self._preprocessed_state, seed=self.seed)
-        model = tf.layers.dense(model, units=64, activation=tf.nn.relu,
+        #model = one_residual(self._preprocessed_state, seed=self.seed)
+
+        output = tf.layers.conv2d(self._preprocessed_state, filters=64, kernel_size=3, strides=1, padding='same',
+                              kernel_initializer=tf.keras.initializers.he_normal(seed=self.seed),
+                              kernel_regularizer=tf.keras.regularizers.l2(1e-04))
+        output = tf.layers.batch_normalization(output)
+        output = tf.nn.relu(output)
+
+        output = tf.layers.conv2d(output, filters=64, kernel_size=3, strides=1, padding='same',
+                              kernel_initializer=tf.keras.initializers.he_normal(seed=self.seed),
+                              kernel_regularizer=tf.keras.regularizers.l2(1e-04))
+        output = tf.layers.batch_normalization(output)
+        output = tf.nn.relu(output)
+
+        output = tf.layers.max_pooling2d(output, pool_size=2, strides=2)
+
+        output = tf.layers.conv2d(output, filters=128, kernel_size=3, strides=1, padding='same',
+                              kernel_initializer=tf.keras.initializers.he_normal(seed=self.seed),
+                              kernel_regularizer=tf.keras.regularizers.l2(1e-04))
+        output = tf.layers.batch_normalization(output)
+        output = tf.nn.relu(output)
+
+        output = tf.layers.conv2d(output, filters=128, kernel_size=3, strides=1, padding='same',
+                              kernel_initializer=tf.keras.initializers.he_normal(seed=self.seed),
+                              kernel_regularizer=tf.keras.regularizers.l2(1e-04))
+        output = tf.layers.batch_normalization(output)
+        output = tf.nn.relu(output)
+
+        output = tf.layers.max_pooling2d(output, pool_size=2, strides=2)
+
+        output = tf.layers.conv2d(output, filters=256, kernel_size=3, strides=1, padding='same',
+                              kernel_initializer=tf.keras.initializers.he_normal(seed=self.seed),
+                              kernel_regularizer=tf.keras.regularizers.l2(1e-04))
+        output = tf.layers.batch_normalization(output)
+        output = tf.nn.relu(output)
+
+        output = tf.layers.max_pooling2d(output, pool_size=2, strides=4)
+
+        output = tf.layers.conv2d(output, filters=512, kernel_size=3, strides=1, padding='same',
+                              kernel_initializer=tf.keras.initializers.he_normal(seed=self.seed),
+                              kernel_regularizer=tf.keras.regularizers.l2(1e-04))
+        output = tf.layers.batch_normalization(output)
+        output = tf.nn.relu(output)
+
+        output = tf.layers.max_pooling2d(output, pool_size=2, strides=4)
+
+        output = tf.layers.flatten(output)
+
+        output = tf.layers.dense(output, units=256, activation=tf.nn.relu,
                                 kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed),
                                 bias_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed))
-        model = tf.layers.dense(model, units=32, activation=tf.nn.relu,
+        output = tf.layers.dense(output, units=128, activation=tf.nn.relu,
                                 kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed),
                                 bias_initializer=tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed))
 
-        model = tf.layers.dense(model, self._action.shape[1])
+        output = tf.layers.dense(output, self._action.shape[1])
 
-        return model
+        return output
 
     def _optimizer(self):
-        return tf.train.AdamOptimizer()
+        return tf.train.AdamOptimizer(learning_rate=0.0001)
 
     def _loss_function(self):
         return tf.losses.mean_squared_error(self._action, self._computation_graph)
